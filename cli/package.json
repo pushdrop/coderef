@@ -1,0 +1,25 @@
+{
+  "name": "coderef",
+  "version": "0.1.0",
+  "description": "Pin code spans in VS Code with auto-incrementing IDs and look them up by number from the CLI.",
+  "bin": {
+    "coderef": "bin/coderef.js"
+  },
+  "files": [
+    "bin",
+    "lib"
+  ],
+  "engines": {
+    "node": ">=14"
+  },
+  "keywords": [
+    "vscode",
+    "cli",
+    "bookmarks",
+    "anchors",
+    "agent",
+    "claude",
+    "cursor"
+  ],
+  "license": "MIT"
+}

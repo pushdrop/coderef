@@ -1,0 +1,66 @@
+{
+  "name": "coderef-vscode",
+  "displayName": "CodeRef",
+  "description": "Pin code spans with auto-incrementing IDs (#1, #2, ...) that a CLI can look up. Made for handing references to AI coding agents.",
+  "version": "0.1.0",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "bookmarks",
+    "anchors",
+    "claude",
+    "cursor",
+    "agent"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      { "command": "coderef.pinSelection", "title": "CodeRef: Pin Selection" },
+      { "command": "coderef.clearAll", "title": "CodeRef: Clear All", "icon": "$(clear-all)" },
+      { "command": "coderef.clearOne", "title": "CodeRef: Clear Pin", "icon": "$(close)" },
+      { "command": "coderef.jumpTo", "title": "CodeRef: Jump To Pin" },
+      { "command": "coderef.refresh", "title": "CodeRef: Refresh", "icon": "$(refresh)" },
+      { "command": "coderef.copyId", "title": "CodeRef: Copy ID" }
+    ],
+    "keybindings": [
+      {
+        "command": "coderef.pinSelection",
+        "key": "ctrl+k ctrl+p",
+        "mac": "cmd+k cmd+p",
+        "when": "editorTextFocus"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "coderef", "title": "CodeRef", "icon": "media/icon.svg" }
+      ]
+    },
+    "views": {
+      "coderef": [
+        { "id": "coderef.pins", "name": "Pinned Spans" }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        { "command": "coderef.refresh", "when": "view == coderef.pins", "group": "navigation" },
+        { "command": "coderef.clearAll", "when": "view == coderef.pins", "group": "navigation" }
+      ],
+      "view/item/context": [
+        { "command": "coderef.clearOne", "when": "view == coderef.pins && viewItem == coderefPin", "group": "inline" },
+        { "command": "coderef.copyId", "when": "view == coderef.pins && viewItem == coderefPin" }
+      ],
+      "editor/context": [
+        { "command": "coderef.pinSelection", "group": "1_modification" }
+      ]
+    }
+  },
+  "license": "MIT"
+}
