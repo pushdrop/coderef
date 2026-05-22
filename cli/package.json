@@ -1,9 +1,10 @@
 {
   "name": "coderef",
-  "version": "0.1.0",
-  "description": "Pin code spans in VS Code with auto-incrementing IDs and look them up by number from the CLI.",
+  "version": "0.2.0",
+  "description": "Pin code spans in VS Code with auto-incrementing IDs and look them up by number from the CLI or via MCP.",
   "bin": {
-    "coderef": "bin/coderef.js"
+    "coderef": "bin/coderef.js",
+    "coderef-mcp": "bin/coderef-mcp.js"
   },
   "files": [
     "bin",
@@ -15,6 +16,7 @@
   "keywords": [
     "vscode",
     "cli",
+    "mcp",
     "bookmarks",
     "anchors",
     "agent",

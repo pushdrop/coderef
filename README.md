@@ -77,6 +77,36 @@ coderef 3 --json
 
 …and it has the file path, line range, and source. When you're done, `coderef clear` wipes the list (and the gutter/sidebar update in real time).
 
+### Via MCP (Claude Desktop, Cursor, etc.)
+
+The same install also gives you `coderef-mcp`, a Model Context Protocol server that exposes pin lookup as tools your agent can call directly — no terminal required.
+
+**Claude Desktop** — add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or the equivalent on your platform:
+
+```json
+{
+  "mcpServers": {
+    "coderef": {
+      "command": "coderef-mcp",
+      "args": ["--workspace", "/absolute/path/to/your/project"]
+    }
+  }
+}
+```
+
+**Claude Code** — register at user scope:
+
+```
+claude mcp add coderef --scope user -- coderef-mcp --workspace /absolute/path/to/your/project
+```
+
+Restart your host, and the agent gains two tools:
+
+- `list_pins(include_code = true)` — every pin with file, line range, and source
+- `get_pin(id, include_code = true)` — resolve a single pin by its numeric id
+
+The MCP server is read-only — pinning and clearing still happen in the editor or via the `coderef` CLI. See [for-agents.md](./for-agents.md) for the full configuration reference.
+
 ## How it works
 
 Pins live in `<workspace>/.vscode/coderef.json`. The extension watches this file via VS Code's `FileSystemWatcher`, so editor and CLI stay in sync — `coderef clear` in a terminal removes the gutter badges immediately, and pinning in the editor updates the CLI right away.
