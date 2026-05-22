@@ -1,5 +1,4 @@
 const vscode = require('vscode');
-const fs = require('fs');
 const path = require('path');
 const { load, save, storeFilePath, defaultStore } = require('./store');
 
@@ -17,10 +16,12 @@ function workspaceRoot() {
     : undefined;
 }
 
-function makeGutterIcon(label) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 16">` +
-    `<rect x="0" y="2" width="36" height="12" rx="3" fill="#3a78c2"/>` +
-    `<text x="18" y="12" text-anchor="middle" font-family="-apple-system,system-ui,sans-serif" font-size="10" font-weight="700" fill="white">${label}</text>` +
+function makeGutterIcon(id) {
+  const label = String(id);
+  const fontSize = label.length <= 2 ? 11 : label.length === 3 ? 8 : 7;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">` +
+    `<rect x="0.5" y="2.5" width="15" height="11" rx="2.5" fill="#3a78c2"/>` +
+    `<text x="8" y="11" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif" font-size="${fontSize}" font-weight="700" fill="white">${label}</text>` +
     `</svg>`;
   return vscode.Uri.parse('data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64'));
 }
@@ -44,6 +45,7 @@ function applyDecorations() {
   }
 
   for (const ed of vscode.window.visibleTextEditors) {
+    if (ed.document.uri.scheme !== 'file') continue;
     const pins = byFile.get(ed.document.uri.fsPath);
     if (!pins) continue;
     for (const p of pins) {
