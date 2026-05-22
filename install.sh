@@ -35,6 +35,22 @@ if [ -z "$CODEREF_BIN" ]; then
   echo "    Add npm's global bin dir to PATH: $(npm prefix -g)/bin" >&2
 fi
 
+# --- global git ignore ----------------------------------------------------
+# Pin storage is per-user state, so make sure no one accidentally commits it.
+GIT_EXCLUDE="$(git config --global --get core.excludesfile 2>/dev/null || true)"
+if [ -z "$GIT_EXCLUDE" ]; then
+  GIT_EXCLUDE="${XDG_CONFIG_HOME:-$HOME/.config}/git/ignore"
+  mkdir -p "$(dirname "$GIT_EXCLUDE")"
+  touch "$GIT_EXCLUDE"
+  git config --global core.excludesfile "$GIT_EXCLUDE"
+fi
+if grep -qxF '**/.vscode/coderef.json' "$GIT_EXCLUDE" 2>/dev/null; then
+  dim "  (global git ignore already has **/.vscode/coderef.json)"
+else
+  printf '\n# coderef - per-user pin storage\n**/.vscode/coderef.json\n' >> "$GIT_EXCLUDE"
+  info "added **/.vscode/coderef.json to $GIT_EXCLUDE"
+fi
+
 # --- extension symlinks ---------------------------------------------------
 LINKED_ANY=0
 for parent in "$HOME/.vscode/extensions" "$HOME/.cursor/extensions"; do

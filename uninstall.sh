@@ -15,6 +15,16 @@ if command -v npm >/dev/null 2>&1; then
   npm unlink -g coderef >/dev/null 2>&1 || true
 fi
 
+# global git ignore entry
+GIT_EXCLUDE="$(git config --global --get core.excludesfile 2>/dev/null || true)"
+[ -z "$GIT_EXCLUDE" ] && GIT_EXCLUDE="${XDG_CONFIG_HOME:-$HOME/.config}/git/ignore"
+if [ -f "$GIT_EXCLUDE" ] && grep -qxF '**/.vscode/coderef.json' "$GIT_EXCLUDE"; then
+  # remove the entry and the comment line above it
+  sed -i.bak -e '/^# coderef - per-user pin storage$/d' -e '\|^\*\*/\.vscode/coderef\.json$|d' "$GIT_EXCLUDE"
+  rm -f "$GIT_EXCLUDE.bak"
+  info "removed **/.vscode/coderef.json from $GIT_EXCLUDE"
+fi
+
 # editor symlinks
 for parent in "$HOME/.vscode/extensions" "$HOME/.cursor/extensions"; do
   target="$parent/$EXT_DIR_NAME"
