@@ -100,12 +100,15 @@ The same install also gives you `coderef-mcp`, a Model Context Protocol server t
 claude mcp add coderef --scope user -- coderef-mcp --workspace /absolute/path/to/your/project
 ```
 
-Restart your host, and the agent gains two tools:
+Restart your host, and the agent gains five tools:
 
 - `list_pins(include_code = true)` — every pin with file, line range, and source
 - `get_pin(id, include_code = true)` — resolve a single pin by its numeric id
+- `add_pin(file, startLine, endLine?)` — create a new pin (the agent can pin code itself)
+- `clear_pin(id)` — drop one pin
+- `clear_all_pins()` — wipe all pins and reset ids
 
-The MCP server is read-only — pinning and clearing still happen in the editor or via the `coderef` CLI. See [for-agents.md](./for-agents.md) for the full configuration reference.
+Changes made via MCP show up in the editor's gutter and sidebar immediately — the extension watches the storage file. See [for-agents.md](./for-agents.md) for full guidance.
 
 ## How it works
 

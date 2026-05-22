@@ -10,7 +10,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { load, storeFilePath, findRoot } = require('../lib/store');
+const { load, save, storeFilePath, findRoot, defaultStore } = require('../lib/store');
 const pkg = require('../package.json');
 
 const PROTOCOL_VERSION = '2025-03-26';
@@ -117,6 +117,68 @@ const tools = [
       required: ['id'],
       additionalProperties: false
     }
+  },
+  {
+    name: 'add_pin',
+    description:
+      'Create a new pin for a range of lines in a file. Use when the user asks ' +
+      'you to pin something - e.g. "pin the foo function", "make a pin for lines ' +
+      '40-55 in bar.ts", "add a ref for this block". Returns the new pin id and ' +
+      'its header. The pin is assigned the next available id and shows up in the ' +
+      "editor's CodeRef sidebar and gutter immediately.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description:
+            'Path to the file. Relative paths resolve against the workspace root; ' +
+            'absolute paths must live inside the workspace.'
+        },
+        startLine: {
+          type: 'integer',
+          minimum: 1,
+          description: '1-indexed line where the pin starts.'
+        },
+        endLine: {
+          type: 'integer',
+          minimum: 1,
+          description:
+            '1-indexed line where the pin ends, inclusive. Omit to pin a single line.'
+        }
+      },
+      required: ['file', 'startLine'],
+      additionalProperties: false
+    }
+  },
+  {
+    name: 'clear_pin',
+    description:
+      'Remove a single pin by id. Use only when the user names a specific pin to ' +
+      'drop ("remove #3", "clear pin 7"). Other pins keep their ids; the id ' +
+      'counter only resets when the list becomes empty.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'integer', description: "The pin's numeric id." }
+      },
+      required: ['id'],
+      additionalProperties: false
+    }
+  },
+  {
+    name: 'clear_all_pins',
+    description:
+      'Wipe every pin in the workspace and reset the id counter to 1. Only call ' +
+      'when the user has explicitly asked to clear or wipe their pins ("clear ' +
+      'all pins", "wipe the refs", "we\'re done with the pins"). Do not call on ' +
+      'your own initiative after resolving pins - the ids are how the user ' +
+      'references spans across turns, so unprompted clearing breaks the handle.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      additionalProperties: false
+    }
   }
 ];
 
@@ -168,6 +230,74 @@ function callTool(name, args) {
     const includeCode = args.include_code !== false;
     const obj = pinToJson(root, p, includeCode);
     return textResult(JSON.stringify(obj, null, 2), obj);
+  }
+
+  if (name === 'add_pin') {
+    const fileArg = String(args.file || '').trim();
+    if (!fileArg) {
+      return textResult('file is required', { error: 'missing file' }, true);
+    }
+    const startLine = Number(args.startLine);
+    if (!Number.isInteger(startLine) || startLine < 1) {
+      return textResult('startLine must be a positive integer', { error: 'invalid startLine' }, true);
+    }
+    const endLine = args.endLine == null ? startLine : Number(args.endLine);
+    if (!Number.isInteger(endLine) || endLine < startLine) {
+      return textResult('endLine must be >= startLine', { error: 'invalid endLine' }, true);
+    }
+    const rootResolved = path.resolve(root);
+    const absInput = path.isAbsolute(fileArg) ? fileArg : path.join(rootResolved, fileArg);
+    const absResolved = path.resolve(absInput);
+    if (absResolved !== rootResolved && !absResolved.startsWith(rootResolved + path.sep)) {
+      return textResult('file is outside the workspace', { error: 'outside workspace', file: fileArg }, true);
+    }
+    if (!fs.existsSync(absResolved) || !fs.statSync(absResolved).isFile()) {
+      return textResult(`file not found: ${fileArg}`, { error: 'file not found', file: fileArg }, true);
+    }
+    const lineCount = fs.readFileSync(absResolved, 'utf8').split('\n').length;
+    if (endLine > lineCount) {
+      return textResult(
+        `endLine ${endLine} exceeds file length (${lineCount})`,
+        { error: 'endLine out of range', file: fileArg, lineCount },
+        true
+      );
+    }
+    const relPath = path.relative(rootResolved, absResolved);
+    const pin = {
+      id: store.nextId,
+      file: relPath,
+      startLine,
+      endLine,
+      createdAt: new Date().toISOString()
+    };
+    store.pins.push(pin);
+    store.nextId += 1;
+    save(storeFilePath(rootResolved), store);
+    const result = { pin, message: `Pinned as #${pin.id}.` };
+    return textResult(result.message, result);
+  }
+
+  if (name === 'clear_pin') {
+    const id = Number(args.id);
+    if (!Number.isInteger(id)) {
+      return textResult('id must be an integer', { error: 'invalid id' }, true);
+    }
+    const before = store.pins.length;
+    store.pins = store.pins.filter((p) => p.id !== id);
+    if (store.pins.length === before) {
+      return textResult(`No pin #${id}.`, { error: 'not found', id }, true);
+    }
+    if (store.pins.length === 0) store.nextId = 1;
+    save(storeFilePath(root), store);
+    const result = { cleared: id, remaining: store.pins.length, message: `Cleared #${id}.` };
+    return textResult(result.message, result);
+  }
+
+  if (name === 'clear_all_pins') {
+    const cleared = store.pins.length;
+    save(storeFilePath(root), defaultStore());
+    const result = { cleared, message: `Cleared ${cleared} pin${cleared === 1 ? '' : 's'}.` };
+    return textResult(result.message, result);
   }
 
   throw new Error(`Unknown tool: ${name}`);

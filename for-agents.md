@@ -38,22 +38,41 @@ already use, using those line bounds, or trust `coderef`'s `code` field.
 ## 2. Via MCP
 
 If your host (Claude Desktop, Claude Code, Cursor, etc.) is set up with the
-`coderef-mcp` server, you have two tools available:
+`coderef-mcp` server, you have five tools available.
 
-- **`list_pins(include_code?: boolean = true)`** — returns the full array of
-  pins as JSON. Use this when the user asks "what pins do I have," "list my
-  coderefs," or references the pins as a group.
+**Read tools** — call whenever the user references a pin:
+
+- **`list_pins(include_code?: boolean = true)`** — returns `{ pins, count }`.
+  Use when the user asks "what pins do I have," "list my coderefs," or
+  references the pins as a group.
 
 - **`get_pin(id: integer, include_code?: boolean = true)`** — resolves one
-  pin. Use this whenever the user names a specific pin: "look at pin #3,"
-  "what's #7," "open coderef 12."
+  pin. Use whenever the user names a specific pin: "look at pin #3," "what's
+  #7," "open coderef 12."
 
 Default `include_code: true` — you'll get the source lines inline. Pass
 `false` only when you're scanning many pins and just need locations.
 
-The MCP server is **read-only**. Pinning new code and clearing pins happen in
-the editor or via the `coderef` CLI — you should not assume you can mutate
-pins from MCP.
+**Write tools** — call only when the user explicitly asks for the action.
+Pins show up in the editor's gutter and sidebar the moment they're created
+or removed, so unprompted mutations are noisy and confusing.
+
+- **`add_pin(file: string, startLine: integer, endLine?: integer)`** —
+  creates a new pin. Use when the user says "pin the foo function," "make a
+  pin for lines 40-55 in bar.ts," "add a ref for this block." `file` is
+  relative to the workspace root (absolute paths must live inside it). Omit
+  `endLine` for a single-line pin. Returns `{ pin, message }` with the
+  assigned id.
+
+- **`clear_pin(id: integer)`** — removes one pin. Use when the user names
+  a specific pin to drop: "remove #3," "clear pin 7." Other pins keep
+  their ids.
+
+- **`clear_all_pins()`** — wipes every pin and resets the id counter.
+  Only call when the user explicitly asks to clear or wipe **all** pins
+  ("clear all pins," "wipe the refs," "we're done with the pins"). Do not
+  call after resolving pins on your own initiative — pin ids are how the
+  user references spans across turns.
 
 ### Setup for a new MCP host
 
