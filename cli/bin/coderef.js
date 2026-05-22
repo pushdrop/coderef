@@ -54,12 +54,14 @@ function usage() {
   process.stdout.write(`coderef - pin code spans in your editor and look them up by number
 
 Usage:
-  coderef list  [--no-code] [--json]    list all pins (code included by default)
-  coderef get <id> [--no-code] [--json] show one pin
-  coderef <id>     [--no-code] [--json] shorthand for "get <id>"
-  coderef clear [<id>]                  clear all pins, or one by id
-  coderef path                          print the storage file path
-  coderef help                          show this help
+  coderef list  [--no-code] [--json]              list all pins (code included by default)
+  coderef get <id> [--no-code] [--json]           show one pin
+  coderef <id>     [--no-code] [--json]           shorthand for "get <id>"
+  coderef add <file> <startLine> [endLine] [-j]   create a new pin
+  coderef add <file>:<startLine>[-<endLine>] [-j] same, with range syntax
+  coderef clear [<id>]                            clear all pins, or one by id
+  coderef path                                    print the storage file path
+  coderef help                                    show this help
 
 Default output is "#<id>  <file>:<startLine>[-<endLine>]" followed by the source lines.
 Pass --no-code (-n) for just the header line. Add --json for machine-readable output.
@@ -142,6 +144,77 @@ if (cmd === 'clear') {
   if (store.pins.length === 0) store.nextId = 1;
   save(file, store);
   process.stdout.write(`Cleared #${id}.\n`);
+  process.exit(0);
+}
+
+if (cmd === 'add') {
+  const flags = rest.filter(a => a.startsWith('-'));
+  const positional = rest.filter(a => !a.startsWith('-'));
+  const json = flags.includes('--json') || flags.includes('-j');
+
+  let fileArg, startLine, endLine;
+  if (positional.length === 0) {
+    process.stderr.write('Usage: coderef add <file> <startLine> [endLine]\n');
+    process.stderr.write('       coderef add <file>:<startLine>[-<endLine>]\n');
+    process.exit(2);
+  } else if (positional.length === 1) {
+    const m = /^(.+):(\d+)(?:-(\d+))?$/.exec(positional[0]);
+    if (!m) {
+      process.stderr.write('Expected <file>:<startLine>[-<endLine>] or <file> <startLine> [endLine]\n');
+      process.exit(2);
+    }
+    fileArg = m[1];
+    startLine = parseInt(m[2], 10);
+    endLine = m[3] != null ? parseInt(m[3], 10) : startLine;
+  } else {
+    fileArg = positional[0];
+    startLine = parseInt(positional[1], 10);
+    endLine = positional[2] != null ? parseInt(positional[2], 10) : startLine;
+  }
+
+  if (!Number.isInteger(startLine) || startLine < 1) {
+    process.stderr.write('startLine must be a positive integer.\n');
+    process.exit(2);
+  }
+  if (!Number.isInteger(endLine) || endLine < startLine) {
+    process.stderr.write('endLine must be >= startLine.\n');
+    process.exit(2);
+  }
+
+  const rootResolved = path.resolve(root);
+  const absInput = path.isAbsolute(fileArg) ? fileArg : path.resolve(process.cwd(), fileArg);
+  const absResolved = path.resolve(absInput);
+  if (absResolved !== rootResolved && !absResolved.startsWith(rootResolved + path.sep)) {
+    process.stderr.write(`File is outside the workspace: ${fileArg}\n`);
+    process.exit(2);
+  }
+  if (!fs.existsSync(absResolved) || !fs.statSync(absResolved).isFile()) {
+    process.stderr.write(`File not found: ${fileArg}\n`);
+    process.exit(2);
+  }
+  const lineCount = fs.readFileSync(absResolved, 'utf8').split('\n').length;
+  if (endLine > lineCount) {
+    process.stderr.write(`endLine ${endLine} exceeds file length (${lineCount}).\n`);
+    process.exit(2);
+  }
+
+  const relPath = path.relative(rootResolved, absResolved);
+  const pin = {
+    id: store.nextId,
+    file: relPath,
+    startLine,
+    endLine,
+    createdAt: new Date().toISOString(),
+  };
+  store.pins.push(pin);
+  store.nextId += 1;
+  save(file, store);
+
+  if (json) {
+    process.stdout.write(JSON.stringify(pinToJson(pin, { code: true, json: true }), null, 2) + '\n');
+  } else {
+    process.stdout.write(`Pinned as #${pin.id}  ${pin.file}:${rangeStr(pin)}\n`);
+  }
   process.exit(0);
 }
 

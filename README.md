@@ -48,6 +48,8 @@ coderef 3                        show pin #3 (with source)
 coderef 3 --no-code              just the header (file + lines)
 coderef 3 --json                 machine-readable
 coderef list --json --no-code    a compact index for an agent
+coderef add src/foo.ts 42 58     create a pin from the command line
+coderef add src/foo.ts:42-58     same, with range syntax
 coderef clear 3                  drop one
 coderef clear                    drop all, reset ids to 1
 coderef path                     where the storage file lives
