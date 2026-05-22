@@ -59,6 +59,7 @@ Usage:
   coderef <id>     [--no-code] [--json]           shorthand for "get <id>"
   coderef add <file> <startLine> [endLine] [-j]   create a new pin
   coderef add <file>:<startLine>[-<endLine>] [-j] same, with range syntax
+  coderef open <id> [--print]                     open the pin in your editor
   coderef clear [<id>]                            clear all pins, or one by id
   coderef path                                    print the storage file path
   coderef help                                    show this help
@@ -144,6 +145,45 @@ if (cmd === 'clear') {
   if (store.pins.length === 0) store.nextId = 1;
   save(file, store);
   process.stdout.write(`Cleared #${id}.\n`);
+  process.exit(0);
+}
+
+if (cmd === 'open') {
+  const printOnly = rest.includes('--print') || rest.includes('-p');
+  const positional = rest.filter(a => !a.startsWith('-'));
+  const id = parseId(positional[0]);
+  if (!Number.isFinite(id)) {
+    process.stderr.write('Need a pin id (e.g. `coderef open 3`).\n');
+    process.exit(2);
+  }
+  const p = store.pins.find(x => x.id === id);
+  if (!p) {
+    process.stderr.write(`No pin #${id}.\n`);
+    process.exit(1);
+  }
+  const abs = path.join(root, p.file);
+  const target = `${abs}:${p.startLine}:1`;
+
+  if (printOnly) {
+    process.stdout.write(target + '\n');
+    process.exit(0);
+  }
+
+  const { spawnSync } = require('child_process');
+  const candidates = [];
+  if (process.env.CODEREF_EDITOR) candidates.push(process.env.CODEREF_EDITOR);
+  candidates.push('cursor', 'code');
+
+  for (const bin of candidates) {
+    const which = spawnSync('command', ['-v', bin], { shell: true, encoding: 'utf8' });
+    if (which.status !== 0 || !which.stdout.trim()) continue;
+    const res = spawnSync(bin, ['--goto', target], { stdio: 'inherit' });
+    if (res.error) continue;
+    process.exit(res.status || 0);
+  }
+
+  process.stderr.write('No editor found on PATH (tried CODEREF_EDITOR, cursor, code). Location:\n');
+  process.stdout.write(target + '\n');
   process.exit(0);
 }
 
