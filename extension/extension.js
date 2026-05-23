@@ -18,10 +18,9 @@ function workspaceRoot() {
 
 function makeGutterIcon(id) {
   const label = String(id);
-  const fontSize = label.length <= 2 ? 11 : label.length === 3 ? 8 : 7;
+  const fontSize = label.length <= 2 ? 11 : label.length === 3 ? 9 : 8;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">` +
-    `<rect x="0.5" y="2.5" width="15" height="11" rx="2.5" fill="#3a78c2"/>` +
-    `<text x="8" y="11" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif" font-size="${fontSize}" font-weight="700" fill="white">${label}</text>` +
+    `<text x="8" y="12" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif" font-size="${fontSize}" font-weight="500" fill="#6f8bb5" opacity="0.85">${label}</text>` +
     `</svg>`;
   return vscode.Uri.parse('data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64'));
 }
@@ -50,16 +49,14 @@ function applyDecorations() {
     if (!pins) continue;
     for (const p of pins) {
       const dec = vscode.window.createTextEditorDecorationType({
-        gutterIconPath: makeGutterIcon('#' + p.id),
+        gutterIconPath: makeGutterIcon(p.id),
         gutterIconSize: 'contain',
-        overviewRulerColor: 'rgba(58, 120, 194, 0.6)',
-        overviewRulerLane: vscode.OverviewRulerLane.Center,
-        isWholeLine: true,
-        backgroundColor: 'rgba(58, 120, 194, 0.06)'
+        overviewRulerColor: 'rgba(111, 139, 181, 0.35)',
+        overviewRulerLane: vscode.OverviewRulerLane.Center
       });
       decorationsById.set(p.id, dec);
-      const lastLineLen = ed.document.lineAt(Math.min(p.endLine - 1, ed.document.lineCount - 1)).text.length;
-      const range = new vscode.Range(p.startLine - 1, 0, Math.min(p.endLine - 1, ed.document.lineCount - 1), lastLineLen);
+      const startLineIdx = Math.max(0, Math.min(p.startLine - 1, ed.document.lineCount - 1));
+      const range = new vscode.Range(startLineIdx, 0, startLineIdx, 0);
       ed.setDecorations(dec, [range]);
     }
   }
